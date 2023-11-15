@@ -8,7 +8,12 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
 
+#################################### Global Variables ##############################################
 OUTPUT_FOLDER = "output"
+CONSOLE_KEYPAIR_DELIMITER = "----------------------------------------------------------------"
+DISPLAY_CONSOLE_DELIMITER = True
+TRACK_TIMING = True
+####################################################################################################
 
 def generate_ecdsa_keys_sync(strength):
     if strength == 0:
@@ -28,12 +33,12 @@ def generate_ecdsa_keys_sync(strength):
         encoding=Encoding.PEM,
         format=PrivateFormat.PKCS8,
         encryption_algorithm=NoEncryption()
-    ).decode().replace('-----BEGIN PRIVATE KEY-----\n', '').replace('-----END PRIVATE KEY-----\n', '')
+    ).decode()
     
     public_pem = public_key.public_bytes(
         encoding=Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode().replace('-----BEGIN PUBLIC KEY-----\n', '').replace('-----END PUBLIC KEY-----\n', '').strip()
+    ).decode()
 
     return private_pem, public_pem
 
@@ -73,33 +78,42 @@ def main():
     print(f"Estimated time to completion: {estimated_time:.2f} seconds")
     
     # Timing the key generation
-    start_time = time.time()
+    if TRACK_TIMING:
+        start_time = time.time()
     with Pool(processes=args.processes) as pool:
         key_pairs = pool.starmap(generate_ecdsa_keys_sync, [(args.strength,) for _ in range(args.out_count)])
-    end_time = time.time()
+    if TRACK_TIMING:
+        end_time = time.time()
     keys = {}
     for i, (private_pem, public_pem) in enumerate(key_pairs):
         if args.json:
+            # strip the header and footer from each key
+            private_pem = private_pem.replace('-----BEGIN PRIVATE KEY-----\n', '').replace('-----END PRIVATE KEY-----\n', '').strip()
+            public_pem = public_pem.replace('-----BEGIN PUBLIC KEY-----\n', '').replace('-----END PUBLIC KEY-----\n', '').strip()
             keys[private_pem] = public_pem
         elif args.file_out:
             filename = f"{args.file_out}-{i+1}.pem"
             # Call a modified save_keys_to_file function that expects strings
             save_keys_to_file_str(filename, private_pem, public_pem, args.encrypt)
         else:
-            print(f"Key Pair {i+1}:")
             print(private_pem)
-            print(public_pem)
-            print()
+            print(public_pem.replace('-----END PUBLIC KEY-----\n', '-----END PUBLIC KEY-----'))
+            if DISPLAY_CONSOLE_DELIMITER and ( args.out_count > 1 ):
+                print(CONSOLE_KEYPAIR_DELIMITER)
 
     if args.json:
-        json_filename = os.path.join(OUTPUT_FOLDER, "keys.json")
+        if args.file_out:
+            json_filename = os.path.join(OUTPUT_FOLDER, f"{args.file_out}.json")
+        else:
+            json_filename = os.path.join(OUTPUT_FOLDER, "keys.json")
         with open(json_filename, 'w') as json_file:
             json.dump(keys, json_file, indent=4)
 
     # Update timing.json
-    total_time = end_time - start_time
-    average_time = total_time / args.out_count
-    update_timing_json(str(args.strength), average_time)
+    if TRACK_TIMING:
+        total_time = end_time - start_time
+        average_time = total_time / args.out_count
+        update_timing_json(str(args.strength), average_time)
     
 def update_timing_json(strength, new_time):
     timing_data = {}

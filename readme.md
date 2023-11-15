@@ -31,26 +31,55 @@ Run the script from the command line with the following arguments:
 python ecdsa_keygen.py [OPTIONS]
 ```
 
-### Options
+## Options
 
 - `--processes`: Number of processes to use (default is the number of CPU cores).
 - `--cpu`: Use CPU for key generation (default option).
-- `--cuda`: <span style="color: red;">PLANNED FEATURE</span> - Use CUDA for key generation.
-- `--opencl`: <span style="color: red;">PLANNED FEATURE</span> - Use OpenCL for key generation.
+- <span style="color: red;">PLANNED</span>  `--cuda`: Use CUDA for key generation.
+- <span style="color: red;">PLANNED</span> `--opencl`: Use OpenCL for key generation.
 - `--file-out`: Specify the output file name for the keys.
 - `--encrypt`: Provide an encryption passcode for the key files.
 - `--out-count`: Set the number of key pairs to generate (default is 1).
 - `--strength`: Select the strength level (0: SECP256R1, 1: SECP384R1, 2: SECP521R1).
 - `--json`: Output keys in JSON format.
 
-### Examples
+## Global Options
+`OUTPUT_FOLDER`: - The folder where the key files will be saved. Defaults to the `output` directory.
+
+`CONSOLE_KEYPAIR_DELIMITER` - The delimiter used to separate the private and public keys when outputting to the console. Defaults to:
+
+`
+"----------------------------------------------------------------"
+`
+
+(The standard width of the keypairs in the console).
+
+`DISPLAY_CONSOLE_DELIMITER` - Whether or not to display the delimiter when outputting to the console. Defaults to `True`.
+
+`TRACK_TIMING` - Whether or not to track the average key generation time. Defaults to `True`.
+
+## Examples
 
 Generate a single key pair using SECP256R1 and output to the console:
 
 ```
 python ecdsa_keygen.py
 ```
+Example Output:
 
+```
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgH4BjBCP01ZaWnYhj
+j2fzzOZoOqupoBfopyVwI1B9YNahRANCAARabKrrXm1Y5DeEKJOkdRxcBHTaEBAE
+LpbAJH++cWSfEe5YP98z/2TMJ1NYRJlkXPll7y1acoNi9WNNmpiSOquY
+-----END PRIVATE KEY-----
+
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWmyq615tWOQ3hCiTpHUcXAR02hAQ
+BC6WwCR/vnFknxHuWD/fM/9kzCdTWESZZFz5Ze8tWnKDYvVjTZqYkjqrmA==
+-----END PUBLIC KEY-----
+```
+*Note, a delimiter will not be displayed when only a single key pair is generated, or when `DISPLAY_CONSOLE_DELIMITER` is set to `False`.*
 
 Generate 5 key pairs using SECP384R1 and save to files with encryption:
 
@@ -62,6 +91,14 @@ Generate 10 key pairs using SECP521R1 and output in JSON format:
 ```
 python ecdsa_keygen.py --strength 2 --out-count 10 --json
 ```
+Example output: [keys.json](output/keys.json)
+
+`--file-out` and `--json` can be used together to save the keys to files and output the keys in JSON format with a custom filename.
+```
+python ecdsa_keygen.py --strength 2 --out-count 10 --file-out keytest --json
+```
+Example output: [keytest.json](output/keytest.json)
+
 
 ## Output
 
@@ -69,6 +106,9 @@ python ecdsa_keygen.py --strength 2 --out-count 10 --json
 - When `--file-out` is used, keys are saved to separate `.pem` files in the `output` directory.
 - If `--json` is selected, a JSON file containing the keys is created in the `output` directory.
 
+<br>
+<br>
+<br >
 
 # Deserialize JSON to PEM Key Pair Generator - [deserialize_json.py](deserialize_json.py)
 This script, deserialize_json.py, is designed to take a JSON file containing ECDSA key pairs and generate PEM files for each key pair.
@@ -108,6 +148,13 @@ This will read the key pairs from keys.json and save the PEM files in the ./pem_
 - Public keys are saved with the filename format [index]-pub.pem.
 
 
-# License
+## License
 
 These scripts are released under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/) - [License File](LICENSE).
+
+## Why?
+To answer simply, why not?
+
+While I understand it's essentially reinventing the wheel, I wanted to create a simple script that would allow me to generate ECDSA key pairs for use in my own projects; as well as to learn more about the ECDSA algorithm and how it works.  This is a nice standard way to generate bulk ECDSA key pairs, that can be delivered in a variety of manners.
+
+Enjoy responsibly :)
