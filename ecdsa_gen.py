@@ -6,7 +6,11 @@ from multiprocessing import Pool
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
+import base64
 
 #################################### Global Variables ##############################################
 OUTPUT_FOLDER = "output"
@@ -42,13 +46,39 @@ def generate_ecdsa_keys_sync(strength):
 
     return private_pem, public_pem
 
+def generate_fernet_key(password, salt):
+    # Generates a Fernet key based on the given password and salt
+    print(password)
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    return key
+
+def encrypt_data(data, password):
+    # Ensure data is a JSON string
+    salt = os.urandom(16)
+    key = generate_fernet_key(password, salt)
+    fernet = Fernet(key)
+
+    # Encrypt the data and return the salt and encrypted data
+    return salt + fernet.encrypt(data.encode())
+
 
 def save_keys_to_file_str(filename, private_pem, public_pem, password=None):
+    print(password)
     filename = os.path.join(OUTPUT_FOLDER, filename)
-    
-    with open(filename, 'w') as file:
-        file.write(private_pem)
-        file.write(public_pem)
+    data_to_write = private_pem + public_pem
+
+    if password is not None:
+        data_to_write = encrypt_data(data_to_write, password)
+
+    with open(filename, 'wb') as file:
+        file.write(data_to_write)
 
 
 def main():
@@ -94,6 +124,7 @@ def main():
         elif args.file_out:
             filename = f"{args.file_out}-{i+1}.pem"
             # Call a modified save_keys_to_file function that expects strings
+            print(args.encrypt)
             save_keys_to_file_str(filename, private_pem, public_pem, args.encrypt)
         else:
             print(private_pem)
@@ -106,8 +137,15 @@ def main():
             json_filename = os.path.join(OUTPUT_FOLDER, f"{args.file_out}.json")
         else:
             json_filename = os.path.join(OUTPUT_FOLDER, "keys.json")
-        with open(json_filename, 'w') as json_file:
-            json.dump(keys, json_file, indent=4)
+        
+        if args.encrypt:
+            encrypted_data = encrypt_data(json.dumps(keys), args.encrypt)
+            with open(json_filename, 'wb') as json_file:
+                json_file.write(encrypted_data)
+                
+        else:
+            with open(json_filename, 'w', encoding='utf-8') as json_file:
+                json.dump(keys, json_file, indent=4)
 
     # Update timing.json
     if TRACK_TIMING:
@@ -118,7 +156,7 @@ def main():
 def update_timing_json(strength, new_time):
     timing_data = {}
     if os.path.exists('timing.json'):
-        with open('timing.json', 'r') as file:
+        with open('timing.json', 'r', encoding='utf-8') as file:
             timing_data = json.load(file)
 
     if strength in timing_data:
@@ -128,14 +166,14 @@ def update_timing_json(strength, new_time):
     else:
         timing_data[strength] = [1, new_time]
 
-    with open('timing.json', 'w') as file:
+    with open('timing.json', 'w', encoding='utf-8') as file:
         json.dump(timing_data, file, indent=4)
 
     return timing_data[strength][1]
 
 def get_average_time(strength):
     if os.path.exists('timing.json'):
-        with open('timing.json', 'r') as file:
+        with open('timing.json', 'r', encoding='utf-8') as file:
             timing_data = json.load(file)
         return timing_data.get(str(strength), [0, 0])[1]
     return 0
