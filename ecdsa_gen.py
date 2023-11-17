@@ -47,8 +47,6 @@ def generate_ecdsa_keys_sync(strength):
     return private_pem, public_pem
 
 def generate_fernet_key(password, salt):
-    # Generates a Fernet key based on the given password and salt
-    print(password)
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
@@ -70,7 +68,6 @@ def encrypt_data(data, password):
 
 
 def save_keys_to_file_str(filename, private_pem, public_pem, password=None):
-    print(password)
     filename = os.path.join(OUTPUT_FOLDER, filename)
     data_to_write = private_pem + public_pem
 
@@ -92,6 +89,8 @@ def main():
     parser.add_argument('--out-count', type=int, default=1, help='Number of key pairs to generate')
     parser.add_argument('--strength', type=int, default=0, choices=[0, 1, 2], help='Strength level (0: SECP256R1, 1: SECP384R1, 2: SECP521R1)')
     parser.add_argument('--json', action='store_true', help='Output keys in JSON format')
+    parser.add_argument('--continuous', action='store_true', help='Continuous output of the key pairs to the console')
+    parser.add_argument('--rate-limit', type=float, help='Rate limit for continuous output, accepts float values (e.g. 0.5 for 500ms)')
     args = parser.parse_args()
 
     if not (args.cuda or args.opencl):
@@ -110,8 +109,38 @@ def main():
     # Timing the key generation
     if TRACK_TIMING:
         start_time = time.time()
-    with Pool(processes=args.processes) as pool:
-        key_pairs = pool.starmap(generate_ecdsa_keys_sync, [(args.strength,) for _ in range(args.out_count)])
+    
+    def output_keys(key_pair):
+        print(f"{key_pair}".strip("()").replace("'", ""))
+        if DISPLAY_CONSOLE_DELIMITER and ( args.out_count > 1 ):
+            print(CONSOLE_KEYPAIR_DELIMITER)
+    
+    if args.continuous:
+        print("Continuous output enabled")
+        if args.out_count > 1:
+            print(f"Output count is greater than 1, outputting {args.out_count} keys to the console")
+            with Pool(processes=args.processes) as pool:
+                key_count = 0
+                while key_count < args.out_count:
+                    pool.apply_async(generate_ecdsa_keys_sync, (args.strength,), callback=output_keys)
+                    key_count += 1
+                    if args.rate_limit:
+                        time.sleep(args.rate_limit)
+                    if key_count == args.out_count:
+                        pool.close()
+                        pool.join()
+            exit(0)
+        else:
+            print("Outputting keys in serial to the console until stopped")
+            with Pool(processes=args.processes) as pool:
+                while True:
+                    pool.apply_async(generate_ecdsa_keys_sync, (args.strength,), callback=output_keys)
+                    if args.rate_limit:
+                        time.sleep(args.rate_limit)
+    else:
+        with Pool(processes=args.processes) as pool:
+            key_pairs = pool.starmap(generate_ecdsa_keys_sync, [(args.strength,) for _ in range(args.out_count)])
+        
     if TRACK_TIMING:
         end_time = time.time()
     keys = {}
@@ -123,8 +152,6 @@ def main():
             keys[private_pem] = public_pem
         elif args.file_out:
             filename = f"{args.file_out}-{i+1}.pem"
-            # Call a modified save_keys_to_file function that expects strings
-            print(args.encrypt)
             save_keys_to_file_str(filename, private_pem, public_pem, args.encrypt)
         else:
             print(private_pem)

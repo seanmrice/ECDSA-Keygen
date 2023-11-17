@@ -4,7 +4,7 @@ This Python script generates Elliptic Curve Digital Signature Algorithm (ECDSA) 
 
 Author: Sean Rice, ecdsagen@programmerscache.com
 
-Current Version: 0.1.0
+Current Version: 0.1.1
 
 ## Features
 
@@ -22,6 +22,8 @@ Before running the script, ensure you have the required packages installed:
 ```
 pip install -r requirements.txt
 ```
+- Requires Python 3.6 or higher.
+- Requires the [cryptography](https://pypi.org/project/cryptography/) package to use SECP256R1, SECP384R1, and SECP521R1 elliptic curves for key generation.
 
 ## Usage
 
@@ -42,6 +44,7 @@ python ecdsa_keygen.py [OPTIONS]
 - `--out-count`: Set the number of key pairs to generate (default is 1).
 - `--strength`: Select the strength level (0: SECP256R1, 1: SECP384R1, 2: SECP521R1).
 - `--json`: Output keys in JSON format.
+- `--continuous`: Continuously generate key pairs until the script is stopped unless paired with `--out-count`.
 
 ## Global Options
 `OUTPUT_FOLDER`: - The folder where the key files will be saved. Defaults to the `output` directory.

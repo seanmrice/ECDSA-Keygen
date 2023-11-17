@@ -8,3 +8,9 @@ Initial commit
 - Optional password encryption for key files.
 - CPU support
 - Deserialization of keys from JSON
+
+# v 0.1.1
+- Fix password encryption
+- Continuous key generation
+- Fix key generation time tracking
+- Parallel key generation
